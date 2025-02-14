@@ -1,0 +1,1 @@
+sudo dpkg -i linux-headers-*.deb linux-image-*.deb
