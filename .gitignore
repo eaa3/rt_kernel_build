@@ -1,0 +1,7 @@
+*.deb
+*.patch.*
+*.tar
+*.sign
+*.changes
+linux-*
+*.patch

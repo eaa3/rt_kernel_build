@@ -3,8 +3,10 @@
 set -e  # Exit on error
 
 # Define kernel and patch version
-KERNEL_VERSION="6.8"
-RT_PATCH_VERSION="6.8-rt8"
+BASE_KERNEL_VERSION="6.1"
+KERNEL_VERSION="${BASE_KERNEL_VERSION}.99"
+RT_PATCH_VERSION="${BASE_KERNEL_VERSION}.99-rt36"
+
 
 # Install required packages
 echo "Installing required packages..."
@@ -16,8 +18,8 @@ sudo apt-get install -y build-essential bc curl debhelper dpkg-dev devscripts fa
 echo "Downloading Linux kernel source and RT patch..."
 curl -LO https://www.kernel.org/pub/linux/kernel/v6.x/linux-${KERNEL_VERSION}.tar.xz
 curl -LO https://www.kernel.org/pub/linux/kernel/v6.x/linux-${KERNEL_VERSION}.tar.sign
-curl -LO https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_VERSION}/older/patch-${RT_PATCH_VERSION}.patch.xz
-curl -LO https://www.kernel.org/pub/linux/kernel/projects/rt/${KERNEL_VERSION}/older/patch-${RT_PATCH_VERSION}.patch.sign
+curl -LO https://www.kernel.org/pub/linux/kernel/projects/rt/${BASE_KERNEL_VERSION}/older/patch-${RT_PATCH_VERSION}.patch.xz
+curl -LO https://www.kernel.org/pub/linux/kernel/projects/rt/${BASE_KERNEL_VERSION}/older/patch-${RT_PATCH_VERSION}.patch.sign
 
 # Extract files
 echo "Extracting kernel source and RT patch..."
@@ -35,7 +37,7 @@ patch -p1 < ../patch-${RT_PATCH_VERSION}.patch
 # cp -v /boot/config-$(uname -r) .config
 
 # Copy pre-defined kernel config
-cp ../.config linux-${KERNEL_VERSION}
+cp ../.config .
 
 # Disable unnecessary debugging options
 scripts/config --disable DEBUG_INFO
@@ -49,7 +51,12 @@ scripts/config --disable PREEMPT_NONE
 scripts/config --disable PREEMPT_VOLUNTARY
 scripts/config --disable PREEMPT
 scripts/config --enable PREEMPT_RT
-scripts/config --enable RT_GROUP_SCHED # docker needs this flag to be true so it can use ande recognise the RT-Kernel
+scripts/config --disable CONFIG_NO_HZ_IDLE
+scripts/config --enable CONFIG_NO_HZ_FULL
+scripts/config --disable CONFIG_HZ_250
+scripts/config --enable CONFIG_HZ_1000
+
+scripts/config --disable RT_GROUP_SCHED 
 
 # Generate kernel config
 echo "Generating kernel configuration..."
@@ -58,10 +65,3 @@ make olddefconfig
 # Build the kernel
 echo "Building the kernel... This may take some time."
 make -j$(nproc) bindeb-pkg
-
-# Install the built kernel
-echo "Installing the new kernel..."
-sudo apt-get update
-# sudo IGNORE_PREEMPT_RT_PRESENCE=1 dpkg -i ../linux-headers-*.deb ../linux-image-*.deb
-
-echo "Real-time kernel installation complete. Reboot your system to use the new kernel."
